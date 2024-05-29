@@ -47,6 +47,8 @@ class KismetMonitor(KismetClient):
     __clientMap = {}
     __logFileName = ""
     __logFile = None
+    __receivedAlerts = []
+    __hadFirstScan = False
 
     def __GetAuthCookie(self):
         authReq = MyReq()
@@ -69,9 +71,47 @@ class KismetMonitor(KismetClient):
         deviceResponse = deviceReq.Execute()
         return json.loads(deviceResponse.text)
 
+    def GetAertData(self, minutes):
+        alerReq = MyReq()
+        timeStamp = str(int(time.time()) - minutes*60)
+        alerReq.url = "http://"+self.__server+":"+self.__port+"/alerts/last-time/"+timeStamp+"/alerts.json"
+        alerReq.headers = {
+            "Cookie": self.__cookie,
+            "charset": "utf-8"
+        }
+        alertResponse = alerReq.Execute()
+        return json.loads(alertResponse.text)
+
+    def GetAllAlertsData(self):
+        alerReq = MyReq()
+        alerReq.url = "http://"+self.__server+":"+self.__port+"/alerts/all_alerts.json"
+        alerReq.headers = {
+            "Cookie": self.__cookie,
+            "charset": "utf-8"
+        }
+        alertResponse = alerReq.Execute()
+        return json.loads(alertResponse.text)
+
     def __ScanDeviceData(self):
         self.__lastScanDeviceData = self.GetDevicesData(self.__refreshRateMin)
         return self.__lastScanDeviceData
+
+    def __ScanAertData(self):
+        if not self.__hadFirstScan:
+            alertData = self.GetAllAlertsData()
+            self.__hadFirstScan = True
+        else:
+            alertData = self.GetAertData(self.__refreshRateMin)
+        
+        for i, alert in enumerate(alertData):
+            if alert["kismet.alert.hash"] not in self.__receivedAlerts:
+                self.__receivedAlerts.append(alert["kismet.alert.hash"])
+                print(" !!! New Alert: " + "[PRIORITY="+str(alert["kismet.alert.severity"])+"] "+"[CLASS="+alert["kismet.alert.class"]+"] "+alert["kismet.alert.text"])
+                self.__LogNewAlert(alert)
+    
+    def __LogNewAlert(self, alert):
+        AlertMessage = getTimeStempStr() + "[Kismet Alert][PRIORITY="+str(alert["kismet.alert.severity"])+"] "+"[CLASS="+alert["kismet.alert.class"]+"] "+alert["kismet.alert.text"]
+        self.__logFile.write(AlertMessage)
 
     def __ScanDevicesInMonitoredSSIDs(self):
         isClientMapChanged = False
@@ -132,6 +172,7 @@ class KismetMonitor(KismetClient):
             print("--------------------------------------------------------------------------------------")
             self.__ScanDeviceData()
             self.__ScanDevicesInMonitoredSSIDs()
+            self.__ScanAertData()
             time.sleep(self.__refreshRateMin * 60)
 
     def SetDataFile(self, fileName):
