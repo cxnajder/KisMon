@@ -18,10 +18,6 @@ class MyReq:
         return response
 
 class KismetClient:
-    pass
-
-class KismetMonitor(KismetClient):
-    
     def __init__(self, server_, port_, login_, pass_):
         self.__server = server_
         self.__port = port_
@@ -29,26 +25,11 @@ class KismetMonitor(KismetClient):
         self.__password = pass_
         self.__cookie = self.__GetAuthCookie()
 
-    def __del__(self):
-        if self.__logFile:
-            self.__logFile.close()
-            print("Closing the log file " + self.__logFileName)
-
-    mointoredSSIDs = []
-
     __cookie = ""
     __login = ""
     __password = ""
     __server = ""
     __port = ""
-    __refreshRateMin = 60
-    __lastScanDeviceData = {}
-    __clientMapFileName = ""
-    __clientMap = {}
-    __logFileName = ""
-    __logFile = None
-    __receivedAlerts = []
-    __hadFirstScan = False
 
     def __GetAuthCookie(self):
         authReq = MyReq()
@@ -60,6 +41,7 @@ class KismetMonitor(KismetClient):
         cookieEnd = cookieTemp.find(";")
         return cookieTemp[0:cookieEnd]
 
+    
     def GetDevicesData(self, minutes):
         deviceReq = MyReq()
         timeStamp = str(int(time.time()) - minutes*60)
@@ -92,16 +74,38 @@ class KismetMonitor(KismetClient):
         alertResponse = alerReq.Execute()
         return json.loads(alertResponse.text)
 
+class KismetMonitor(KismetClient):
+    
+    def __init__(self, server_, port_, login_, pass_, monitoredSSIDs__):
+        super().__init__(self, server_, port_, login_, pass_)
+        self.__mointoredSSIDs = monitoredSSIDs__
+
+    def __del__(self):
+        if self.__logFile:
+            self.__logFile.close()
+            print("Closing the log file " + self.__logFileName)
+
+    __mointoredSSIDs = []
+    __refreshRateMin = 60
+    __lastScanDeviceData = {}
+    __clientMapFileName = ""
+    __clientMap = {}
+    __logFileName = ""
+    __logFile = None
+    __receivedAlerts = []
+    __hadFirstScan = False
+
+
     def __ScanDeviceData(self):
-        self.__lastScanDeviceData = self.GetDevicesData(self.__refreshRateMin)
+        self.__lastScanDeviceData = super().GetDevicesData(self.__refreshRateMin)
         return self.__lastScanDeviceData
 
     def __ScanAertData(self):
         if not self.__hadFirstScan:
-            alertData = self.GetAllAlertsData()
+            alertData = super().GetAllAlertsData()
             self.__hadFirstScan = True
         else:
-            alertData = self.GetAertData(self.__refreshRateMin)
+            alertData = super().GetAertData(self.__refreshRateMin)
         
         for i, alert in enumerate(alertData):
             if alert["kismet.alert.hash"] not in self.__receivedAlerts:
@@ -192,8 +196,7 @@ class KismetMonitor(KismetClient):
 
 def Main():
     customRefreshRateInMin = 0.1
-    kisMon = KismetMonitor(my.kismetServer, my.kismetPort, my.kismetLogin, my.kismetPass)
-    kisMon.mointoredSSIDs = my.wifiSSIDs
+    kisMon = KismetMonitor(my.kismetServer, my.kismetPort, my.kismetLogin, my.kismetPass, my.wifiSSIDs)
     kisMon.SetDataFile("clinetMap.json")
     kisMon.Scan(customRefreshRateInMin)
 
