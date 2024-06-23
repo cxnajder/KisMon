@@ -158,7 +158,7 @@ class KismetMonitor(KismetClient):
         return deviceJson["kismet.device.base.type"] == "Wi-Fi AP"
     
     def __IsDeviceMonitoredAccessPoint(self, deviceJson):
-        return deviceJson["kismet.device.base.commonname"] in self.mointoredSSIDs
+        return deviceJson["kismet.device.base.commonname"] in self.__mointoredSSIDs
 
     def __DoesAccessPointHasClientDevices(self, accessPointJson):
         return bool("dot11.device.associated_client_map" in list(accessPointJson["dot11.device"]))
