@@ -77,7 +77,7 @@ class KismetClient:
 class KismetMonitor(KismetClient):
     
     def __init__(self, server_, port_, login_, pass_, monitoredSSIDs__):
-        super().__init__(self, server_, port_, login_, pass_)
+        super().__init__(server_, port_, login_, pass_)
         self.__mointoredSSIDs = monitoredSSIDs__
 
     def __del__(self):
